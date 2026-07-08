@@ -637,6 +637,10 @@ async function doConnect() {
   btn.textContent = 'Connecting…';
   $('login-error').style.display = 'none';
 
+  if (url.startsWith('http://')) {
+    showError('Warning: This server uses unencrypted HTTP — credentials will be sent in cleartext.');
+  }
+
   state.server = url;
   state.username = username;
   state.password = password;
@@ -829,9 +833,16 @@ function buildChannelItem(ch) {
   const name = getItemName(ch);
   if (icon) {
     const img = document.createElement('img');
-    img.src = icon;
     img.onerror = () => { logo.textContent = initials(name); };
     logo.appendChild(img);
+    if (window.electronAPI) {
+      window.electronAPI.fetchImage(icon).then(dataUrl => {
+        if (dataUrl) img.src = dataUrl;
+        else logo.textContent = initials(name);
+      });
+    } else {
+      img.src = icon;
+    }
   } else {
     logo.textContent = initials(name);
   }

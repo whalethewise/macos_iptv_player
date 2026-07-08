@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // MPV player (controls handled by mpv's built-in OSC)
   mpvPlay:       (url)    => ipcRenderer.invoke('mpv-play', url),
   mpvStop:       ()       => ipcRenderer.invoke('mpv-stop'),
+  fetchImage:    (url)    => ipcRenderer.invoke('fetch-image', url),
 });
