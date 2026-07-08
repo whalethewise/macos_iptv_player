@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IPTV Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #08080e;
+    --surface:   #0f0f1a;
+    --panel:     #13131f;
+    --border:    rgba(255,255,255,0.07);
+    --accent:    #e8365d;
+    --accent2:   #ff6b35;
+    --text:      #f0f0f8;
+    --muted:     #6b6b8a;
+    --radius:    12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-app-region: no-drag;
+  }
+
+  /* ─── TITLEBAR ─── */
+  .titlebar {
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px 0 80px;
+    -webkit-app-region: drag;
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+  }
+  .titlebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: -0.3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-app-region: no-drag;
+  }
+  .titlebar-status {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    -webkit-app-region: no-drag;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: #3ddc84; box-shadow: 0 0 8px #3ddc8466; }
+
+  /* ─── LOGIN SCREEN ─── */
+  #login-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    flex-direction: column;
+  }
+  .login-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(232,54,93,0.18), transparent 70%);
+    pointer-events: none;
+  }
+  .login-card::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(255,107,53,0.12), transparent 70%);
+    pointer-events: none;
+  }
+  .login-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .login-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  .field-group { margin-bottom: 14px; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .field-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .field-input::placeholder { color: var(--muted); }
+  .field-input:focus {
+    border-color: var(--accent);
+    background: rgba(232,54,93,0.06);
+  }
+  .btn-connect {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-connect:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-connect:active { transform: translateY(0); opacity: 1; }
+  .btn-connect:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .login-error {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(232,54,93,0.1);
+    border: 1px solid rgba(232,54,93,0.3);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #ff8099;
+    display: none;
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  .app-body {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 52px);
+  }
+
+  /* ─── SECTION TABS ─── */
+  .section-tabs {
+    display: flex;
+    padding: 10px 10px 0;
+    gap: 4px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .section-tab {
+    flex: 1;
+    padding: 7px 4px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-app-region: no-drag;
+  }
+  .section-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .section-tab.active { background: rgba(232,54,93,0.15); color: var(--accent); font-weight: 600; }
+
+  .btn-back {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    margin: 8px 8px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .btn-back:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+  /* ─── NOW PLAYING BAR ─── */
+  .now-playing-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(232,54,93,0.08);
+    border-bottom: 1px solid rgba(232,54,93,0.2);
+    flex-shrink: 0;
+  }
+  .now-playing-bar.visible { display: flex; }
+  .np-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .np-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .np-stop {
+    margin-left: auto;
+    background: none;
+    border: 1px solid rgba(232,54,93,0.3);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .np-stop:hover { background: rgba(232,54,93,0.15); }
+
+  /* ─── CATEGORIES ─── */
+  .cat-panel {
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 220px;
+    min-height: 80px;
+  }
+  .cat-panel-header {
+    padding: 8px 14px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .cat-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 0 8px 8px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .cat-tabs::-webkit-scrollbar { width: 3px; }
+  .cat-tabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+  .cat-tab {
+    padding: 7px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    border: none;
+    color: var(--muted);
+    background: transparent;
+    text-align: left;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    width: 100%;
+  }
+  .cat-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .cat-tab.active {
+    background: rgba(232,54,93,0.15);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ─── SEARCH ─── */
+  .search-wrap { position: relative; }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 14px; pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px 9px 36px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus { border-color: rgba(232,54,93,0.5); }
+
+  .sidebar-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ─── CHANNEL LIST ─── */
+  .channel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .channel-list::-webkit-scrollbar { width: 4px; }
+  .channel-list::-webkit-scrollbar-track { background: transparent; }
+  .channel-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .channel-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    margin-bottom: 2px;
+  }
+  .channel-item:hover { background: rgba(255,255,255,0.05); }
+  .channel-item.active {
+    background: rgba(232,54,93,0.12);
+    border-color: rgba(232,54,93,0.3);
+  }
+  .channel-logo {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    overflow: hidden;
+  }
+  .channel-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .channel-info { min-width: 0; }
+  .channel-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .channel-cat {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 12px 6px;
+  }
+
+  /* ─── FOOTER ─── */
+  .sidebar-footer {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .server-info { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .btn-logout {
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-logout:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ─── LOADING ─── */
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-channels {
+    position: absolute; inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    flex-direction: column;
+    gap: 14px;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .loading-channels.show { opacity: 1; pointer-events: all; }
+  .loading-channels .spinner { display: block; }
+  .loading-msg { font-size: 13px; color: var(--muted); }
+
+  .no-results {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--muted);
+    font-size: 13px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── TITLEBAR ── -->
+<div class="titlebar">
+  <span class="titlebar-logo">▶ STREAM</span>
+  <div class="titlebar-status" id="titlebar-status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Not connected</span>
+  </div>
+</div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">▶ STREAM</div>
+    <div class="login-subtitle">Xtream Codes IPTV Player</div>
+    <div class="field-group">
+      <div class="field-label">Server URL</div>
+      <input class="field-input" id="inp-url" type="text" placeholder="http://yourserver.com:8080" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="field-group">
+      <div class="field-label">Username</div>
+      <input class="field-input" id="inp-user" type="text" placeholder="username" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="field-group">
+      <div class="field-label">Password</div>
+      <input class="field-input" id="inp-pass" type="password" placeholder="password" />
+    </div>
+    <button class="btn-connect" id="btn-connect">Connect</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="app-body" id="app-body" style="display:none;">
+
+  <div class="section-tabs">
+    <button class="section-tab active" data-section="live" id="tab-live">Live TV</button>
+    <button class="section-tab" data-section="movies" id="tab-movies">Movies</button>
+    <button class="section-tab" data-section="series" id="tab-series">Series</button>
+  </div>
+
+  <!-- Now Playing indicator -->
+  <div class="now-playing-bar" id="now-playing">
+    <span class="np-dot"></span>
+    <span class="np-name" id="np-name"></span>
+    <button class="np-stop" id="np-stop">Stop</button>
+  </div>
+
+  <button class="btn-back" id="btn-back">← Back to series</button>
+
+  <div class="cat-panel">
+    <div class="cat-panel-header">Categories</div>
+    <div style="padding:0 8px 6px;">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="search-cat" type="text" placeholder="Filter categories…" />
+      </div>
+    </div>
+    <div class="cat-tabs" id="cat-tabs"></div>
+  </div>
+
+  <div class="sidebar-header">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" id="search-input" type="text" placeholder="Search channels…" />
+    </div>
+  </div>
+
+  <div style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    <div class="loading-channels" id="loading-channels">
+      <div class="spinner"></div>
+      <div class="loading-msg">Loading channels…</div>
+    </div>
+    <div class="channel-list" id="channel-list"></div>
+    <div class="no-results" id="no-results">No channels found</div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="server-info" id="server-info"></div>
+    <button class="btn-logout" id="btn-logout">Logout</button>
+  </div>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let state = {
+  server: '', username: '', password: '',
+  activeSection: 'live',
+  categories: [], channels: [],
+  filteredChannels: [],
+  activeCategory: 'all',
+  activeChannelId: null,
+  retryUrl: null,
+  sectionData: {
+    live:   { categories: [], items: [], loaded: false },
+    movies: { categories: [], items: [], loaded: false },
+    series: { categories: [], items: [], loaded: false },
+  },
+  viewingSeriesEpisodes: false,
+  currentSeries: null,
+};
+
+// ─── HELPERS ─────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
+function xtreamUrl(action, extra = '') {
+  const base = state.server.replace(/\/$/, '');
+  return `${base}/player_api.php?username=${state.username}&password=${state.password}&action=${action}${extra}`;
+}
+
+function streamUrl(streamId, ext = 'ts', type = 'live') {
+  const base = state.server.replace(/\/$/, '');
+  const pathPrefix = type === 'movies' ? 'movie' : type === 'series' ? 'series' : 'live';
+  return `${base}/${pathPrefix}/${state.username}/${state.password}/${streamId}.${ext}`;
+}
+
+async function apiCall(url) {
+  if (window.electronAPI) {
+    return window.electronAPI.xtreamRequest({ url });
+  }
+  const res = await fetch(url);
+  return res.json();
+}
+
+function initials(name) {
+  if (!name) return '?';
+  return name.split(' ').slice(0, 2).map(w => w?.[0] || '').join('').toUpperCase() || '?';
+}
+
+// ─── SECTION CONFIG ──────────────────────────────────────
+const SECTION_CONFIG = {
+  live:   { catAction: 'get_live_categories',   itemAction: 'get_live_streams', label: 'channels' },
+  movies: { catAction: 'get_vod_categories',    itemAction: 'get_vod_streams',  label: 'movies' },
+  series: { catAction: 'get_series_categories', itemAction: 'get_series',       label: 'series' },
+};
+
+// ─── LOGIN ───────────────────────────────────────────────
+$('btn-connect').addEventListener('click', doConnect);
+[$('inp-url'), $('inp-user'), $('inp-pass')].forEach(el =>
+  el.addEventListener('keydown', e => e.key === 'Enter' && doConnect())
+);
+
+async function doConnect() {
+  const url      = $('inp-url').value.trim();
+  const username = $('inp-user').value.trim();
+  const password = $('inp-pass').value.trim();
+
+  if (!url || !username || !password) {
+    showError('Please fill in all fields.');
+    return;
+  }
+
+  const btn = $('btn-connect');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  $('login-error').style.display = 'none';
+
+  state.server = url;
+  state.username = username;
+  state.password = password;
+
+  try {
+    if (window.electronAPI) await window.electronAPI.setServer(url);
+    const cats = await apiCall(xtreamUrl('get_live_categories'));
+    if (!Array.isArray(cats)) throw new Error('Invalid response — check credentials.');
+
+    state.sectionData.live.categories = cats;
+    await saveCredentials();
+    enterApp();
+  } catch (err) {
+    showError('Connection failed: ' + (err.message || err));
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+
+function showError(msg) {
+  const el = $('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ─── ENTER APP ───────────────────────────────────────────
+async function enterApp() {
+  $('login-screen').style.display = 'none';
+  $('app-body').style.display = 'flex';
+
+  $('status-dot').classList.add('connected');
+  let serverHost;
+  try { serverHost = new URL(state.server).hostname; } catch { serverHost = state.server; }
+  $('status-text').textContent = state.username + ' @ ' + serverHost;
+  $('server-info').textContent = '';
+  const userBold = document.createElement('b');
+  userBold.textContent = state.username;
+  $('server-info').appendChild(userBold);
+  $('server-info').appendChild(document.createElement('br'));
+  $('server-info').appendChild(document.createTextNode(serverHost));
+
+  await switchSection('live');
+}
+
+// ─── SECTION SWITCHING ──────────────────────────────────
+document.querySelectorAll('.section-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchSection(tab.dataset.section));
+});
+
+async function switchSection(section) {
+  state.activeSection = section;
+  state.activeCategory = 'all';
+  state.viewingSeriesEpisodes = false;
+  state.currentSeries = null;
+  $('btn-back').style.display = 'none';
+  $('search-input').value = '';
+  $('search-cat').value = '';
+
+  document.querySelectorAll('.section-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.section === section);
+  });
+
+  const cfg = SECTION_CONFIG[section];
+  $('search-input').placeholder = `Search ${cfg.label}…`;
+  $('search-cat').placeholder = `Filter categories…`;
+
+  const data = state.sectionData[section];
+
+  if (!data.loaded) {
+    $('loading-channels').classList.add('show');
+    try {
+      const [cats, items] = await Promise.all([
+        data.categories.length ? Promise.resolve(data.categories) : apiCall(xtreamUrl(cfg.catAction)),
+        apiCall(xtreamUrl(cfg.itemAction)),
+      ]);
+      data.categories = Array.isArray(cats) ? cats : [];
+      data.items = Array.isArray(items) ? items : [];
+      data.loaded = true;
+    } catch (err) {
+      console.error(`Failed to load ${section}`, err);
+      data.categories = [];
+      data.items = [];
+    }
+    $('loading-channels').classList.remove('show');
+  }
+
+  state.categories = data.categories;
+  state.channels = data.items;
+
+  buildCategoryTabs();
+  applyFilter();
+}
+
+// ─── CATEGORIES ──────────────────────────────────────────
+function buildCategoryTabs() {
+  const query = $('search-cat').value.toLowerCase().trim();
+  const tabs = $('cat-tabs');
+  tabs.innerHTML = '';
+
+  const allTab = document.createElement('button');
+  allTab.className = 'cat-tab' + (state.activeCategory === 'all' ? ' active' : '');
+  allTab.textContent = 'All';
+  allTab.dataset.id = 'all';
+  allTab.addEventListener('click', () => selectCategory('all'));
+  if (!query) tabs.appendChild(allTab);
+
+  state.categories.forEach(cat => {
+    if (query && !cat.category_name.toLowerCase().includes(query)) return;
+    const tab = document.createElement('button');
+    tab.className = 'cat-tab' + (String(cat.category_id) === String(state.activeCategory) ? ' active' : '');
+    tab.textContent = cat.category_name;
+    tab.dataset.id = cat.category_id;
+    tab.addEventListener('click', () => selectCategory(cat.category_id));
+    tabs.appendChild(tab);
+  });
+}
+
+$('search-cat').addEventListener('input', buildCategoryTabs);
+
+function selectCategory(id) {
+  state.activeCategory = id;
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.id === String(id));
+  });
+  applyFilter();
+}
+
+// ─── ITEMS ───────────────────────────────────────────────
+function applyFilter() {
+  const query = $('search-input').value.toLowerCase().trim();
+  let filtered = state.channels;
+
+  if (state.activeCategory !== 'all') {
+    filtered = filtered.filter(c => String(c.category_id) === String(state.activeCategory));
+  }
+  if (query) {
+    filtered = filtered.filter(c => (c.name || c.title || '').toLowerCase().includes(query));
+  }
+
+  state.filteredChannels = filtered;
+  renderChannels();
+}
+
+$('search-input').addEventListener('input', applyFilter);
+
+function renderChannels() {
+  const list = $('channel-list');
+  const noRes = $('no-results');
+  list.innerHTML = '';
+
+  if (state.filteredChannels.length === 0) {
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+
+  if (state.activeCategory === 'all' && !$('search-input').value) {
+    const byCat = {};
+    state.filteredChannels.forEach(ch => {
+      const cat = state.categories.find(c => c.category_id === ch.category_id);
+      const catName = cat ? cat.category_name : 'Uncategorized';
+      if (!byCat[catName]) byCat[catName] = [];
+      byCat[catName].push(ch);
+    });
+    Object.entries(byCat).forEach(([catName, channels]) => {
+      const label = document.createElement('div');
+      label.className = 'section-label';
+      label.textContent = catName;
+      list.appendChild(label);
+      channels.forEach(ch => list.appendChild(buildChannelItem(ch)));
+    });
+  } else {
+    state.filteredChannels.forEach(ch => list.appendChild(buildChannelItem(ch)));
+  }
+}
+
+function getItemName(ch) { return ch.name || ch.title || ''; }
+function getItemIcon(ch) { return ch.stream_icon || ch.cover || ''; }
+function getItemId(ch) { return ch.stream_id || ch.series_id || ch.id || ''; }
+
+function buildChannelItem(ch) {
+  const item = document.createElement('div');
+  const itemId = getItemId(ch);
+  item.className = 'channel-item' + (itemId === state.activeChannelId ? ' active' : '');
+  item.dataset.id = itemId;
+
+  const logo = document.createElement('div');
+  logo.className = 'channel-logo';
+  const icon = getItemIcon(ch);
+  const name = getItemName(ch);
+  if (icon) {
+    const img = document.createElement('img');
+    img.src = icon;
+    img.onerror = () => { logo.textContent = initials(name); };
+    logo.appendChild(img);
+  } else {
+    logo.textContent = initials(name);
+  }
+
+  const info = document.createElement('div');
+  info.className = 'channel-info';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'channel-name';
+  nameEl.textContent = name;
+  info.appendChild(nameEl);
+
+  if (state.activeSection === 'movies' && ch.year) {
+    const sub = document.createElement('div');
+    sub.className = 'channel-cat';
+    sub.textContent = ch.year + (ch.rating ? ' · ★ ' + ch.rating : '');
+    info.appendChild(sub);
+  } else if (state.activeSection === 'series' && !state.viewingSeriesEpisodes) {
+    const sub = document.createElement('div');
+    sub.className = 'channel-cat';
+    sub.textContent = ch.last_modified ? 'Updated: ' + new Date(ch.last_modified * 1000).toLocaleDateString() : '';
+    info.appendChild(sub);
+  }
+
+  item.appendChild(logo);
+  item.appendChild(info);
+
+  if (state.activeSection === 'series' && !state.viewingSeriesEpisodes) {
+    item.addEventListener('click', () => openSeries(ch));
+  } else {
+    item.addEventListener('click', () => playItem(ch));
+  }
+
+  return item;
+}
+
+// ─── SERIES DRILL-DOWN ───────────────────────────────────
+async function openSeries(series) {
+  $('loading-channels').classList.add('show');
+  try {
+    const info = await apiCall(xtreamUrl('get_series_info', '&series_id=' + series.series_id));
+    state.currentSeries = series;
+    state.viewingSeriesEpisodes = true;
+
+    const episodes = [];
+    if (info.episodes) {
+      Object.entries(info.episodes).forEach(([seasonNum, eps]) => {
+        if (Array.isArray(eps)) {
+          eps.forEach(ep => {
+            episodes.push({
+              ...ep,
+              name: `S${seasonNum}E${ep.episode_num} — ${ep.title || 'Episode ' + ep.episode_num}`,
+              stream_id: ep.id,
+              container_extension: ep.container_extension || 'mkv',
+              _type: 'series',
+              _seasonNum: seasonNum,
+            });
+          });
+        }
+      });
+    }
+
+    state.channels = episodes;
+    state.filteredChannels = episodes;
+    $('btn-back').style.display = 'flex';
+    $('btn-back').textContent = '← ' + getItemName(series);
+    renderChannels();
+  } catch (err) {
+    console.error('Failed to load series info', err);
+  }
+  $('loading-channels').classList.remove('show');
+}
+
+$('btn-back').addEventListener('click', () => {
+  state.viewingSeriesEpisodes = false;
+  state.currentSeries = null;
+  $('btn-back').style.display = 'none';
+
+  const data = state.sectionData.series;
+  state.channels = data.items;
+  state.activeCategory = 'all';
+  applyFilter();
+});
+
+// ─── PLAYBACK (via mpv) ──────────────────────────────────
+async function playItem(ch) {
+  const section = ch._type || state.activeSection;
+  const id = ch.stream_id || ch.id;
+  state.activeChannelId = getItemId(ch);
+
+  document.querySelectorAll('.channel-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === String(state.activeChannelId));
+  });
+
+  const ext = ch.container_extension || 'ts';
+  const name = getItemName(ch);
+  const url = streamUrl(id, ext, section);
+  state.retryUrl = { ch };
+
+  console.log('[IPTV] Playing via mpv:', name, url);
+
+  // Show now-playing bar
+  $('np-name').textContent = name;
+  $('now-playing').classList.add('visible');
+
+  try {
+    const result = await window.electronAPI.mpvPlay(url);
+    if (result && result.error) {
+      console.error('[IPTV] mpv error:', result.error);
+      $('now-playing').classList.remove('visible');
+    }
+  } catch (err) {
+    console.error('[IPTV] mpv exception:', err.message || err);
+    $('now-playing').classList.remove('visible');
+  }
+}
+
+// Stop button in now-playing bar
+$('np-stop').addEventListener('click', async () => {
+  await window.electronAPI.mpvStop();
+  $('now-playing').classList.remove('visible');
+  state.activeChannelId = null;
+  document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+});
+
+// ─── LOGOUT ──────────────────────────────────────────────
+$('btn-logout').addEventListener('click', async () => {
+  await window.electronAPI.mpvStop();
+  state = {
+    server: '', username: '', password: '',
+    activeSection: 'live',
+    categories: [], channels: [],
+    filteredChannels: [], activeCategory: 'all', activeChannelId: null,
+    retryUrl: null,
+    sectionData: {
+      live:   { categories: [], items: [], loaded: false },
+      movies: { categories: [], items: [], loaded: false },
+      series: { categories: [], items: [], loaded: false },
+    },
+    viewingSeriesEpisodes: false, currentSeries: null,
+  };
+  await clearCredentials();
+  if (window.electronAPI) await window.electronAPI.setServer(null);
+  $('app-body').style.display = 'none';
+  $('login-screen').style.display = 'flex';
+  $('status-dot').classList.remove('connected');
+  $('status-text').textContent = 'Not connected';
+  $('btn-connect').disabled = false;
+  $('btn-connect').textContent = 'Connect';
+  $('login-error').style.display = 'none';
+  $('now-playing').classList.remove('visible');
+  $('btn-back').style.display = 'none';
+  $('search-input').value = '';
+  $('search-cat').value = '';
+  document.querySelectorAll('.section-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.section === 'live');
+  });
+});
+
+// ─── PERSIST CREDENTIALS ─────────────────────────────────
+async function saveCredentials() {
+  const creds = { server: state.server, username: state.username, password: state.password };
+  if (window.electronAPI) {
+    await window.electronAPI.saveCreds(creds);
+  } else {
+    try { localStorage.setItem('iptv_creds', JSON.stringify(creds)); } catch {}
+  }
+}
+
+async function clearCredentials() {
+  if (window.electronAPI) {
+    await window.electronAPI.clearCreds();
+  } else {
+    try { localStorage.removeItem('iptv_creds'); } catch {}
+  }
+}
+
+async function loadCredentials() {
+  if (window.electronAPI) {
+    return await window.electronAPI.loadCreds();
+  }
+  try { return JSON.parse(localStorage.getItem('iptv_creds') || 'null'); } catch { return null; }
+}
+
+// Auto-login if saved
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const saved = await loadCredentials();
+    if (saved?.server && saved?.username && saved?.password) {
+      $('inp-url').value = saved.server;
+      $('inp-user').value = saved.username;
+      $('inp-pass').value = saved.password;
+      state.server   = saved.server;
+      state.username = saved.username;
+      state.password = saved.password;
+
+      const btn = $('btn-connect');
+      btn.disabled = true;
+      btn.textContent = 'Reconnecting…';
+
+      if (window.electronAPI) await window.electronAPI.setServer(saved.server);
+      const cats = await apiCall(xtreamUrl('get_live_categories'));
+      if (Array.isArray(cats)) {
+        state.sectionData.live.categories = cats;
+        enterApp();
+        return;
+      }
+      btn.disabled = false;
+      btn.textContent = 'Connect';
+    }
+  } catch {
+    $('btn-connect').disabled = false;
+    $('btn-connect').textContent = 'Connect';
+  }
+});
+</script>
+</body>
+</html>
