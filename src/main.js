@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, session, safeStorage, screen } = require('e
 const path = require('path');
 const https = require('https');
 const http = require('http');
-const { execFile } = require('child_process');
+const { execFile, execSync } = require('child_process');
 const mpvAPI = require('node-mpv');
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
@@ -40,12 +40,19 @@ function createWindow() {
 }
 
 // ─── MPV PLAYER ──────────────────────────────────────────
+function resolveMpvBinary() {
+  if (process.env.MPV_PATH) return process.env.MPV_PATH;
+  try { return execSync('which mpv', { encoding: 'utf8' }).trim(); } catch {}
+  const fallbacks = ['/opt/homebrew/bin/mpv', '/usr/local/bin/mpv', '/usr/bin/mpv'];
+  return fallbacks.find(p => { try { require('fs').accessSync(p); return true; } catch {} }) || 'mpv';
+}
+
 function initMpv() {
   const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
 
   try {
     mpv = new mpvAPI({
-      binary: '/opt/homebrew/bin/mpv',
+      binary: resolveMpvBinary(),
       verbose: false,
     }, [
       '--no-terminal',
